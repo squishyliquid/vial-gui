@@ -21,6 +21,7 @@ from protocol.dynamic import ProtocolDynamic
 from protocol.key_override import ProtocolKeyOverride
 from protocol.macro import ProtocolMacro
 from protocol.tap_dance import ProtocolTapDance
+from protocol.hall_effect import ProtocolHallEffect
 from unlocker import Unlocker
 from util import MSG_LEN, hid_send
 
@@ -32,7 +33,7 @@ class ProtocolError(Exception):
     pass
 
 
-class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, ProtocolKeyOverride, ProtocolAltRepeatKey):
+class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, ProtocolKeyOverride, ProtocolAltRepeatKey, ProtocolHallEffect):
     """ Low-level communication with a vial-enabled keyboard """
 
     def __init__(self, dev, usb_send=hid_send):
@@ -97,6 +98,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         self.reload_combo()
         self.reload_key_override()
         self.reload_alt_repeat_key()
+        self.reload_hall_effect()
 
     def reload_layers(self):
         """ Get how many layers the keyboard has """
@@ -403,6 +405,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         data["key_override"] = self.save_key_override()
         data["alt_repeat_key"] = self.save_alt_repeat_key()
         data["settings"] = self.settings
+        data["hall_effect"] = self.save_hall_effect()
 
         return json.dumps(data).encode("utf-8")
 
@@ -431,6 +434,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         self.restore_combo(data.get("combo", []))
         self.restore_key_override(data.get("key_override", []))
         self.restore_alt_repeat_key(data.get("alt_repeat_key", []))
+        self.restore_hall_effect(data.get("hall_effect"))
 
         for qsid, value in data.get("settings", dict()).items():
             from editor.qmk_settings import QmkSettings
