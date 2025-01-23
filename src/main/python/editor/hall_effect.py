@@ -1,167 +1,314 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, QSlider, \
-    QComboBox, QCheckBox, QMessageBox
+   QComboBox, QCheckBox
+
+from PyQt5.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PyQt5.QtCore import Qt, pyqtSignal
 
 from editor.basic_editor import BasicEditor
+from widgets.keyboard_widget import KeyboardWidget
 from util import tr
 from vial_device import VialKeyboard
 
+from PyQt5.QtGui import QColor
+
+import json
+from PyQt5.QtWidgets import QVBoxLayout, QLabel, QWidget, QGridLayout, QPushButton
+from PyQt5.QtCore import Qt, pyqtSignal
+
+
+class ClickableWidget(QWidget):
+
+    clicked = pyqtSignal()
+
+    def mousePressEvent(self, evt):
+        super().mousePressEvent(evt)
+        self.clicked.emit()
+
 class HallEffect(BasicEditor):
-
-    def __init__(self):
+    def __init__(self, layout_editor):
         super().__init__()
-        self.keyboard = None
+        self.layout_editor = layout_editor
 
-        self.addStretch()
+        # Initialize keyboard container
+        self.container = KeyboardWidget(layout_editor)
+        self.container.clicked.connect(self.on_key_clicked)
+        self.container.deselected.connect(self.on_key_deselected)
 
-        w = QWidget()
-        w.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
-        self.container = QGridLayout()
-        w.setLayout(self.container)
-        self.addWidget(w)
-        self.setAlignment(w, QtCore.Qt.AlignHCenter)
+        # Main layout setup
+        main_layout = QVBoxLayout()
+        main_layout.addStretch()
+        main_layout.addWidget(self.container)
+        main_layout.addStretch()
+        main_layout.setAlignment(self.container, Qt.AlignHCenter)
 
-        lbl_travel_dist = QLabel(tr("HallEffect", "Travel distance"))
-        self.container.addWidget(lbl_travel_dist, 0, 0)
+        # Clickable widget for empty space
+        empty_space_widget = ClickableWidget()
+        empty_space_widget.setLayout(main_layout)
+        # empty_space_widget.clicked.connect(self.on_empty_space_clicked)
+        self.addWidget(empty_space_widget)
+
+        settings_widget = QWidget()
+        #settings_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+
+        settings_layout = QGridLayout()
+        settings_widget.setLayout(settings_layout)
+
+        # Travel distance
+        self.lbl_travel_dist = QLabel(tr("HallEffect", "Travel distance"))
+        settings_layout.addWidget(self.lbl_travel_dist, 0, 0)
         self.travel_dist = QComboBox()
-        self.travel_dist.addItem("3.5 mm")
-        #self.travel_dist.addItem("4.0 mm")
+        self.travel_dist.addItems(["3.4 mm", "3.5 mm"])
         self.travel_dist.currentTextChanged.connect(self.on_travel_dist_changed)
-        self.container.addWidget(self.travel_dist, 0, 1)
-        
-        lbl_actuation = QLabel(tr("HallEffect", "Actuation point"))
-        self.container.addWidget(lbl_actuation, 1, 0)
+        settings_layout.addWidget(self.travel_dist, 0, 1)
+
+        # Actuation point
+        self.lbl_actuation = QLabel(tr("HallEffect", "Actuation point"))
+        settings_layout.addWidget(self.lbl_actuation, 1, 0)
         self.actuation = QSlider(QtCore.Qt.Horizontal)
         self.actuation.setMinimum(1)
         self.actuation.valueChanged.connect(self.on_actuation_changed)
-        self.container.addWidget(self.actuation, 1, 1)
+        settings_layout.addWidget(self.actuation, 1, 1)
         self.txt_actuation = QLabel()
-        self.container.addWidget(self.txt_actuation, 1, 2)
+        settings_layout.addWidget(self.txt_actuation, 1, 2)
 
+        # Rapid Trigger
         self.mode = QCheckBox("Rapid Trigger")
-        self.mode.stateChanged.connect(self.on_mode_changed)
-        self.container.addWidget(self.mode, 2, 0)
+        self.mode.stateChanged.connect(self.on_rt_changed)
+        settings_layout.addWidget(self.mode, 2, 0)
 
+        # Sensitivity
         self.lbl_sensitivity = QLabel(tr("HallEffect", "Sensitivity"))
-        self.container.addWidget(self.lbl_sensitivity, 3, 0)
+        settings_layout.addWidget(self.lbl_sensitivity, 3, 0)
         self.sensitivity = QSlider(QtCore.Qt.Horizontal)
-        self.sensitivity.setMinimum(2)
-        self.sensitivity.setMaximum(20)
+        self.sensitivity.setRange(2, 20)
         self.sensitivity.valueChanged.connect(self.on_sensitivity_changed)
-        self.container.addWidget(self.sensitivity, 3, 1)
+        settings_layout.addWidget(self.sensitivity, 3, 1)
         self.txt_sensitivity = QLabel()
-        self.container.addWidget(self.txt_sensitivity, 3, 2)
+        settings_layout.addWidget(self.txt_sensitivity, 3, 2)
 
-        self.addStretch()
-        buttons = QHBoxLayout()
-        buttons.addStretch()
-        self.btn_save = QPushButton(tr("HallEffect", "Save"))
-        buttons.addWidget(self.btn_save)
-        self.btn_save.clicked.connect(self.save_settings)
-        self.btn_undo = QPushButton(tr("HallEffect", "Undo"))
-        buttons.addWidget(self.btn_undo)
-        self.btn_undo.clicked.connect(self.reload_settings)
-        # self.btn_reset = QPushButton(tr("HallEffect", "Reset"))
-        # buttons.addWidget(self.btn_reset)
-        # self.btn_reset.clicked.connect(self.reset_settings)
-        self.addLayout(buttons)
+        # # Continuous Rapid Trigger
+        self.mode_crt = QCheckBox("Continuous RT")
+        self.mode_crt.stateChanged.connect(self.on_crt_changed)
+        settings_layout.addWidget(self.mode_crt, 4, 0)
 
-    def reload_settings(self):
-        self.keyboard.reload_hall_effect()
-        settings = self.keyboard.hall_effect_get()
-        self.val_mode = settings[0]
-        self.val_sensitivity = settings[1]
-        self.val_travel_dist = settings[2]
-        self.val_actuation = settings[3]
-        
-        self.update_mode(self.val_mode)
-        self.update_sensitivity(self.val_sensitivity/5)
-        self.update_actuation(self.val_actuation/10)
-        self.update_travel_dist(self.val_travel_dist/100)
+        # Create the ClickableWidget as the base container
+        empty_space = ClickableWidget()
+        # empty_space.clicked.connect(self.on_empty_space_clicked)
 
-        self.on_change()
+        # Create a layout for the ClickableWidget
+        empty_space_layout = QVBoxLayout()
+        empty_space.setLayout(empty_space_layout)
+
+        # Add stretch above and below the settings_widget for centering
+        #empty_space_layout.addStretch()
+        empty_space_layout.addWidget(settings_widget, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        empty_space_layout.addStretch()
+
+        self.addWidget(empty_space)
+
+        # Create a horizontal layout for the buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()  # Add stretch to the left of the buttons
+
+        self.btn_apply = QPushButton(tr("HallEffect", "Apply"))
+        self.btn_apply.clicked.connect(self.apply)
+        button_layout.addWidget(self.btn_apply)
+
+        self.btn_apply_all = QPushButton(tr("HallEffect", "Apply to all"))
+        self.btn_apply_all.clicked.connect(self.apply_all)
+        button_layout.addWidget(self.btn_apply_all)
+
+        self.addLayout(button_layout)
 
     def on_change(self):
         changed = False
-        
-        if self.keyboard.hall_effect_get() != (self.val_mode, self.val_sensitivity, self.val_travel_dist, self.val_actuation):
-            changed = True
+        if self.container.active_key != None:
+            row = self.container.active_key.desc.row
+            col = self.container.active_key.desc.col
+            if self.keyboard.hall_effect_get_key_config()[row][col] != (self.val_actuation, self.val_mode):
+                changed = True
+        else:
+            if self.keyboard.hall_effect_get_user_config() != [self.val_travel_dist, self.val_sensitivity]:
+                changed = True
 
-        self.btn_save.setEnabled(changed)
-        self.btn_undo.setEnabled(changed)
+        self.btn_apply.setEnabled(changed)
+        # self.refresh_layer_display()
+
+    def on_travel_dist_changed(self, dist):
+        travel_dist = 0
+        if dist == "3.4 mm":
+            travel_dist = 340
+        elif dist == "3.5 mm":
+            travel_dist = 350
+        
+        self.actuation.setMaximum(int(travel_dist / 10 - 1))
+        self.val_travel_dist = travel_dist
+        self.on_change()
+
+    def on_actuation_changed(self, actuation):
+        self.val_actuation = actuation * 10
+        self.txt_actuation.setText(f'{actuation / 10:.1f} mm')
+        self.on_change()
+
+    def on_rt_changed(self, mode):
+        if mode == 2:
+            mode = 1
+        self.val_mode = mode
+        self.mode_crt.setEnabled(mode)
+        if mode == 0:
+            self.mode_crt.setChecked(mode)        
+        self.on_change()
+
+    def on_crt_changed(self, mode):
+        if mode == 0:
+            mode = 1
+        if self.val_mode != 0:
+            self.val_mode = mode
+            self.on_change()
+
+    def on_sensitivity_changed(self, sensitivity):
+        self.val_sensitivity = sensitivity * 5
+        self.txt_sensitivity.setText(f'{sensitivity * 0.05:.2f} mm')
+        self.on_change()
+
+    def apply(self):
+        if self.container.active_key != None:
+            self.prev_key = None
+            row = self.container.active_key.desc.row
+            col = self.container.active_key.desc.col
+            config = (self.val_actuation, self.val_mode)
+            self.keyboard.hall_effect_set_key_config(row, col, config)
+
+            self.on_change()
+            self.container.deselect()
+            self.refresh_layer_display()
+        else:
+            self.keyboard.hall_effect_set_user_config(0, self.val_travel_dist)
+            self.keyboard.hall_effect_set_user_config(1, self.val_sensitivity)
+
+            self.on_change()
+
+    def apply_all(self):
+        self.prev_key = None
+        config = (self.val_actuation, self.val_mode)
+
+        for widget in self.container.widgets:
+            row = widget.desc.row
+            col = widget.desc.col
+            if (self.keyboard.hall_effect_get_key_config()[row][col] != (self.val_actuation, self.val_mode)):
+                self.keyboard.hall_effect_set_key_config(row, col, config)
+
+        self.on_change()
+        self.container.deselect()
+        self.refresh_layer_display()
+
+    def reload_settings(self):
+        self.prev_key = None
+        row = self.container.widgets[0].desc.row
+        col = self.container.widgets[0].desc.col
+
+        self.val_actuation = self.keyboard.hall_effect_get_key_config()[row][col][0]
+        self.val_mode = self.keyboard.hall_effect_get_key_config()[row][col][1]
+        self.val_travel_dist = self.keyboard.hall_effect_get_user_config()[0]
+        self.val_sensitivity = self.keyboard.hall_effect_get_user_config()[1]
+        
+        self.update_mode(self.val_mode)
+        self.update_sensitivity(self.val_sensitivity / 5)
+        self.update_actuation(self.val_actuation / 10)
+        self.update_travel_dist(self.val_travel_dist / 100)
+
+        self.on_key_deselected()
+        self.on_change()
+
+    def update_mode(self, mode):
+        self.mode.setChecked(mode)
+        if mode == 2:
+            self.mode_crt.setChecked(1)
+        else:
+            self.mode_crt.setChecked(0)
+        self.mode_crt.setEnabled(mode)
+
+    def update_sensitivity(self, sensitivity):
+        self.sensitivity.setSliderPosition(int(sensitivity))
+        self.txt_sensitivity.setText(f'{sensitivity * 0.05:.2f} mm')
+
+    def update_travel_dist(self, dist):
+        self.travel_dist.setCurrentText(f'{dist:.1f} mm')
+        self.actuation.setMaximum(int(dist * 10 - 1))
+
+    def update_actuation(self, actuation):
+        self.actuation.setSliderPosition(int(actuation))
+        self.txt_actuation.setText(f'{actuation / 10:.1f} mm')
+
+    def refresh_layer_display(self):
+        """ Refresh text on key widgets to display data corresponding to current layer """
+        for widget in self.container.widgets:
+            row = widget.desc.row
+            col = widget.desc.col
+
+            actuation = self.keyboard.hall_effect_get_key_config()[row][col][0]
+            mode = self.keyboard.hall_effect_get_key_config()[row][col][1]
+            widget.setText(f"{actuation/100:.1f}")
+            
+            if mode == 0:
+                widget.setColor(QColor(0, 0, 0))
+            elif mode == 1:
+                widget.setColor(QColor(255, 255, 255))
+            elif mode == 2:
+                widget.setColor(QColor(135, 206, 250))
+
+    # def on_empty_space_clicked(self):
+    #     self.container.deselect()
+    #     self.container.update()
+        
+    def on_key_clicked(self):
+        """ Called when a key on the keyboard widget is clicked """
+        if self.prev_key != self.container.active_key:
+            self.prev_key = self.container.active_key
+            self.btn_apply_all.setEnabled(1)
+            self.lbl_travel_dist.setEnabled(0)
+            self.travel_dist.setEnabled(0)
+            self.sensitivity.setEnabled(0)
+            self.txt_sensitivity.setEnabled(0)
+            self.lbl_sensitivity.setEnabled(0)
+            self.lbl_actuation.setEnabled(1)
+            self.actuation.setEnabled(1)
+            self.mode.setEnabled(1)
+            self.mode_crt.setEnabled(1)
+
+            row = self.container.active_key.desc.row
+            col = self.container.active_key.desc.col
+
+            self.update_actuation(self.keyboard.hall_effect_get_key_config()[row][col][0]/10)
+            self.update_mode(self.keyboard.hall_effect_get_key_config()[row][col][1])
+        else:
+            self.container.deselect()
+            self.prev_key = None
+
+    def on_key_deselected(self):
+        self.btn_apply_all.setEnabled(0)
+        self.lbl_travel_dist.setEnabled(1)
+        self.travel_dist.setEnabled(1)
+        self.sensitivity.setEnabled(1)
+        self.txt_sensitivity.setEnabled(1)
+        self.lbl_sensitivity.setEnabled(1)
+        self.lbl_actuation.setEnabled(0)
+        self.actuation.setEnabled(0)
+        self.mode.setEnabled(0)
+        self.mode_crt.setEnabled(0)
 
     def rebuild(self, device):
         super().rebuild(device)
         if self.valid():
             self.keyboard = device.keyboard
+            self.container.set_keys(self.keyboard.keys, self.keyboard.encoders)
+            self.refresh_layer_display()
             self.reload_settings()
 
-    def save_settings(self):
-        settings = (self.val_mode, self.val_sensitivity, self.val_travel_dist, self.val_actuation)
-        self.keyboard.hall_effect_set(settings)
-        self.on_change()
+        self.container.setEnabled(self.valid())
 
-    # def reset_settings(self):
-    #     if QMessageBox.question(self.widget(), "",
-    #                             tr("HallEffect", "Reset all settings to default values?"),
-    #                             QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes:
-    #         self.keyboard.hall_effect_reset()
-    #         self.reload_settings()
-
-    def update_mode(self, mode):
-        self.mode.setChecked(mode) 
-        self.sensitivity.setEnabled(mode)
-        self.txt_sensitivity.setEnabled(mode)
-        self.lbl_sensitivity.setEnabled(mode)
-
-    def update_sensitivity(self, sensitivity):
-        self.sensitivity.setSliderPosition(int(sensitivity))
-        self.txt_sensitivity.setText(f'{sensitivity*0.05:.2f} mm')
-
-    def update_travel_dist(self, dist):
-        self.travel_dist.setCurrentText(f'{dist:.1f} mm')
-        self.actuation.setMaximum(int(dist*10 - 1))
-
-    def update_actuation(self, actuation):
-        self.actuation.setSliderPosition(int(actuation))
-        self.txt_actuation.setText(f'{actuation/10:.1f} mm')
-
-    def on_mode_changed(self, mode):
-        if mode == 2:
-            mode = 1
-        self.val_mode = mode
-        self.sensitivity.setEnabled(mode)
-        self.txt_sensitivity.setEnabled(mode)
-        self.lbl_sensitivity.setEnabled(mode)
-        
-        self.on_change()
-
-    def on_sensitivity_changed(self, sensitivity):
-        self.val_sensitivity = sensitivity*5
-        self.txt_sensitivity.setText(f'{sensitivity*0.05:.2f} mm')
-        
-        self.on_change()
-
-    def on_travel_dist_changed(self, dist):
-        travel_dist = 0
-        if dist == "3.5 mm":
-            travel_dist = 350
-        elif dist == "4.0 mm":
-            travel_dist = 400
-        
-        self.actuation.setMaximum(int(travel_dist/10 - 1))
-        
-        self.val_travel_dist = travel_dist
-
-        self.on_change()
-
-    def on_actuation_changed(self, actuation):
-        self.val_actuation = actuation * 10
-        self.txt_actuation.setText(f'{actuation/10:.1f} mm')
-
-        self.on_change()
-        
     def valid(self):
-        return isinstance(self.device, VialKeyboard) and \
-                (self.device.keyboard and self.device.keyboard.key_settings != -1)
+        return isinstance(self.device, VialKeyboard) # and \
+            #    (self.device.keyboard and self.device.keyboard.key_config != -1 and self.device.keyboard.user_config != -1)
