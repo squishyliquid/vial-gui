@@ -3,40 +3,70 @@ import struct
 
 from keycodes.keycodes import Keycode, RESET_KEYCODE
 from protocol.base_protocol import BaseProtocol
-from protocol.constants import CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_GET, CMD_VIAL_HALL_EFFECT_SET, CMD_VIAL_HALL_EFFECT_RESET
+from protocol.constants import CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_GET_KEY_CONFIG, CMD_VIAL_HALL_EFFECT_SET_KEY_CONFIG, CMD_VIAL_HALL_EFFECT_GET_USER_CONFIG, CMD_VIAL_HALL_EFFECT_SET_USER_CONFIG
 from unlocker import Unlocker
 
 
 class ProtocolHallEffect(BaseProtocol):
 
     def reload_hall_effect(self):
-        data = self.usb_send(
-            self.dev,
-            struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_GET),
-            retries=20
-        )
-        if data[0] == 0:
-            self.key_settings = struct.unpack("<BBHH", data[1:1 + struct.calcsize("<BBHH")])
-        else:
-            self.key_settings = -1
+        self.key_config = []
+        for row in range(self.rows):
+            r = []
+            for col in range(self.cols):
+                data = self.usb_send(
+                    self.dev,
+                    struct.pack("BBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_GET_KEY_CONFIG, row, col),
+                    retries=20
+                )
+                if data[0] == 0:
+                    # self.key_settings = struct.unpack("<BBHH", data[1:1 + struct.calcsize("<BBHH")])
+                    r.append(struct.unpack("<HB", data[1:1 + struct.calcsize("<HB")]))
+                else:
+                    self.key_config = -1
+                    break
+            self.key_config.append(r)
+        
+        self.user_config = []
+        for i in range(2):
+            data = self.usb_send(
+                self.dev,
+                struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_GET_USER_CONFIG, i),
+                retries=20
+            )
+            if data[0] == 0:
+                self.user_config.append(struct.unpack("<H", data[1:1 + struct.calcsize("<H")])[0])
+            else:
+                self.user_config = -1
+                break
 
-    def hall_effect_get(self):
-        return self.key_settings
+    def hall_effect_get_key_config(self):
+        return self.key_config
+    
+    def hall_effect_get_user_config(self):
+        return self.user_config
 
-    def hall_effect_set(self, settings):
-        if self.key_settings == settings:
+    def hall_effect_set_key_config(self, row, col, config):
+        if self.key_config[row][col] == config:
             return
         
-        self.key_settings = settings
+        self.key_config[row][col] = config
+        serialized = struct.pack("<HB", *config)
+        self.usb_send(self.dev, struct.pack("BBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_SET_KEY_CONFIG, row, col) + serialized, retries=20)
+
+    def hall_effect_set_user_config(self, idx, config):
+        if self.user_config[idx] == config:
+            return
         
-        serialized = struct.pack("<BBHH", *settings)
-        self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_SET) + serialized, retries=20)
+        self.user_config[idx] = config
+        serialized = struct.pack("<H", *(config,))
+        self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_SET_USER_CONFIG, idx) + serialized, retries=20)
 
     # def hall_effect_reset(self):
     #     self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_RESET))
 
-    def save_hall_effect(self):
-        return self.key_settings
+    # def save_hall_effect(self):
+    #     return self.key_settings
 
-    def restore_hall_effect(self, data):
-        self.hall_effect_set(data)
+    # def restore_hall_effect(self, data):
+    #     self.hall_effect_set(data)
