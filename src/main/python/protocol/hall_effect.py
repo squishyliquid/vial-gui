@@ -65,8 +65,18 @@ class ProtocolHallEffect(BaseProtocol):
     # def hall_effect_reset(self):
     #     self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_RESET))
 
-    # def save_hall_effect(self):
-    #     return self.key_settings
+    def save_hall_effect(self):
+        return [self.key_config, self.user_config]
 
-    # def restore_hall_effect(self, data):
-    #     self.hall_effect_set(data)
+    def restore_hall_effect(self, data):
+        key_cfg = data[0]
+        print(data[0])
+        user_cfg = data[1]
+        print(data[1])
+
+        for row in range(self.rows):
+            for col in range(self.cols):
+                self.hall_effect_set_key_config(row, col, key_cfg[row][col])
+
+        self.hall_effect_set_user_config(0, user_cfg[0])
+        self.hall_effect_set_user_config(1, user_cfg[1])
