@@ -127,8 +127,9 @@ class HallEffect(BasicEditor):
         if self.container.active_key != None:
             row = self.container.active_key.desc.row
             col = self.container.active_key.desc.col
-            if self.keyboard.hall_effect_get_key_config()[row][col] != (self.val_actuation, self.val_mode):
-                changed = True
+            if row in self.keyboard.active_rows:
+                if self.keyboard.hall_effect_get_key_config()[row][col] != (self.val_actuation, self.val_mode):
+                    changed = True
         else:
             if self.keyboard.hall_effect_get_user_config() != [self.val_travel_dist, self.val_sensitivity]:
                 changed = True
@@ -197,8 +198,9 @@ class HallEffect(BasicEditor):
         for widget in self.container.widgets:
             row = widget.desc.row
             col = widget.desc.col
-            if (self.keyboard.hall_effect_get_key_config()[row][col] != (self.val_actuation, self.val_mode)):
-                self.keyboard.hall_effect_set_key_config(row, col, config)
+            if row in self.keyboard.active_rows:
+                if (self.keyboard.hall_effect_get_key_config()[row][col] != (self.val_actuation, self.val_mode)):
+                    self.keyboard.hall_effect_set_key_config(row, col, config)
 
         self.on_change()
         self.container.deselect()
@@ -206,8 +208,18 @@ class HallEffect(BasicEditor):
 
     def reload_settings(self):
         self.prev_key = None
-        row = self.container.widgets[0].desc.row
-        col = self.container.widgets[0].desc.col
+
+        row = self.keyboard.active_rows[0]
+        col = 0
+
+        for widget in self.container.widgets:
+            row = widget.desc.row
+            col = widget.desc.col
+
+            if row in self.keyboard.active_rows:
+                break
+
+        # print(row, col)
 
         self.val_actuation = self.keyboard.hall_effect_get_key_config()[row][col][0]
         self.val_mode = self.keyboard.hall_effect_get_key_config()[row][col][1]
@@ -219,7 +231,19 @@ class HallEffect(BasicEditor):
         self.update_actuation(self.val_actuation / 10)
         self.update_travel_dist(self.val_travel_dist / 100)
 
-        self.on_key_deselected()
+        self.btn_apply_all.setEnabled(False)
+
+        # Enable widgets
+        enable_widgets = [self.lbl_travel_dist, self.travel_dist, self.sensitivity, 
+                        self.txt_sensitivity, self.lbl_sensitivity]
+        for widget in enable_widgets:
+            widget.setEnabled(True)
+
+        # Disable widgets
+        disable_widgets = [self.lbl_actuation, self.actuation, self.mode, self.mode_crt]
+        for widget in disable_widgets:
+            widget.setEnabled(False)
+
         self.on_change()
 
     def update_mode(self, mode):
@@ -248,56 +272,87 @@ class HallEffect(BasicEditor):
             row = widget.desc.row
             col = widget.desc.col
 
-            actuation = self.keyboard.hall_effect_get_key_config()[row][col][0]
-            mode = self.keyboard.hall_effect_get_key_config()[row][col][1]
-            widget.setText(f"{actuation/100:.1f}")
-            
-            if mode == 0:
-                widget.setColor(QColor(0, 0, 0))
-            elif mode == 1:
-                widget.setColor(QColor(255, 255, 255))
-            elif mode == 2:
-                widget.setColor(QColor(135, 206, 250))
+            if row in self.keyboard.active_rows:
+                actuation = self.keyboard.hall_effect_get_key_config()[row][col][0]
+                mode = self.keyboard.hall_effect_get_key_config()[row][col][1]
+                widget.setText(f"{actuation/100:.1f}")
+                
+                if mode == 0:
+                    widget.setColor(QColor(0, 0, 0))
+                elif mode == 1:
+                    widget.setColor(QColor(255, 255, 255))
+                elif mode == 2:
+                    widget.setColor(QColor(135, 206, 250))
 
     # def on_empty_space_clicked(self):
     #     self.container.deselect()
     #     self.container.update()
         
     def on_key_clicked(self):
-        """ Called when a key on the keyboard widget is clicked """
-        if self.prev_key != self.container.active_key:
-            self.prev_key = self.container.active_key
-            self.btn_apply_all.setEnabled(1)
-            self.lbl_travel_dist.setEnabled(0)
-            self.travel_dist.setEnabled(0)
-            self.sensitivity.setEnabled(0)
-            self.txt_sensitivity.setEnabled(0)
-            self.lbl_sensitivity.setEnabled(0)
-            self.lbl_actuation.setEnabled(1)
-            self.actuation.setEnabled(1)
-            self.mode.setEnabled(1)
-            self.mode_crt.setEnabled(1)
+        self.val_travel_dist = self.keyboard.hall_effect_get_user_config()[0]
+        self.val_sensitivity = self.keyboard.hall_effect_get_user_config()[1]
+        
+        self.update_sensitivity(self.val_sensitivity / 5)
+        self.update_travel_dist(self.val_travel_dist / 100)
 
-            row = self.container.active_key.desc.row
-            col = self.container.active_key.desc.col
+        row, col = self.container.active_key.desc.row, self.container.active_key.desc.col
 
-            self.update_actuation(self.keyboard.hall_effect_get_key_config()[row][col][0]/10)
-            self.update_mode(self.keyboard.hall_effect_get_key_config()[row][col][1])
-        else:
+        # print(self.container.active_key)
+
+        if row not in self.keyboard.active_rows:
             self.container.deselect()
             self.prev_key = None
+            return
+
+        if self.prev_key == self.container.active_key:
+            self.container.deselect()
+            self.prev_key = None
+            return
+
+        self.prev_key = self.container.active_key
+        self.btn_apply_all.setEnabled(True)
+
+        # Disable elements
+        for widget in [self.lbl_travel_dist, self.travel_dist, self.sensitivity, 
+                    self.txt_sensitivity, self.lbl_sensitivity]:
+            widget.setEnabled(False)
+
+        # Enable elements
+        for widget in [self.lbl_actuation, self.actuation, self.mode, self.mode_crt]:
+            widget.setEnabled(True)
+
+        key_config = self.keyboard.hall_effect_get_key_config()[row][col]
+        self.update_actuation(key_config[0] / 10)
+        self.update_mode(key_config[1])
 
     def on_key_deselected(self):
-        self.btn_apply_all.setEnabled(0)
-        self.lbl_travel_dist.setEnabled(1)
-        self.travel_dist.setEnabled(1)
-        self.sensitivity.setEnabled(1)
-        self.txt_sensitivity.setEnabled(1)
-        self.lbl_sensitivity.setEnabled(1)
-        self.lbl_actuation.setEnabled(0)
-        self.actuation.setEnabled(0)
-        self.mode.setEnabled(0)
-        self.mode_crt.setEnabled(0)
+        if self.prev_key != None:
+            row, col = self.prev_key.desc.row, self.prev_key.desc.col
+            key_config = self.keyboard.hall_effect_get_key_config()[row][col]
+            self.update_actuation(key_config[0] / 10)
+            self.update_mode(key_config[1])
+            self.prev_key = None
+
+        self.val_travel_dist = self.keyboard.hall_effect_get_user_config()[0]
+        self.val_sensitivity = self.keyboard.hall_effect_get_user_config()[1]
+        
+        self.update_sensitivity(self.val_sensitivity / 5)
+        self.update_travel_dist(self.val_travel_dist / 100)
+
+        self.btn_apply_all.setEnabled(False)
+
+        # Enable widgets
+        enable_widgets = [self.lbl_travel_dist, self.travel_dist, self.sensitivity, 
+                        self.txt_sensitivity, self.lbl_sensitivity]
+        for widget in enable_widgets:
+            widget.setEnabled(True)
+
+        # Disable widgets
+        disable_widgets = [self.lbl_actuation, self.actuation, self.mode, self.mode_crt]
+        for widget in disable_widgets:
+            widget.setEnabled(False)
+        
+        self.on_change()
 
     def rebuild(self, device):
         super().rebuild(device)
