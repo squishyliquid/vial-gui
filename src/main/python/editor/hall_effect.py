@@ -186,6 +186,20 @@ class HallEffect(BasicEditor):
             self.container.deselect()
             self.refresh_layer_display()
         else:
+            if self.keyboard.hall_effect_get_user_config()[0] > self.val_travel_dist:
+                changed = False
+                for widget in self.container.widgets:
+                    row = widget.desc.row
+                    col = widget.desc.col
+                    if row in self.keyboard.active_rows:
+                        actuation = self.keyboard.hall_effect_get_key_config()[row][col][0]
+                        mode = self.keyboard.hall_effect_get_key_config()[row][col][1]
+                        if actuation >= self.val_travel_dist:
+                            self.keyboard.hall_effect_set_key_config(row, col, (self.val_travel_dist - 10, mode))
+                            changed = True
+                if changed:
+                    self.refresh_layer_display()
+
             self.keyboard.hall_effect_set_user_config(0, self.val_travel_dist)
             self.keyboard.hall_effect_set_user_config(1, self.val_sensitivity)
 
@@ -283,6 +297,7 @@ class HallEffect(BasicEditor):
                     widget.setColor(QColor(255, 255, 255))
                 elif mode == 2:
                     widget.setColor(QColor(135, 206, 250))
+        self.container.update()
 
     # def on_empty_space_clicked(self):
     #     self.container.deselect()
