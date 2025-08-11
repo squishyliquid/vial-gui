@@ -59,7 +59,7 @@ class HallEffect(BasicEditor):
         self.lbl_travel_dist = QLabel(tr("HallEffect", "Travel distance"))
         settings_layout.addWidget(self.lbl_travel_dist, 0, 0)
         self.travel_dist = QComboBox()
-        self.travel_dist.addItems(["3.4 mm", "3.5 mm"])
+        self.travel_dist.addItems(["3.2 mm", "3.4 mm", "3.5 mm"])
         self.travel_dist.currentTextChanged.connect(self.on_travel_dist_changed)
         settings_layout.addWidget(self.travel_dist, 0, 1)
 
@@ -92,6 +92,17 @@ class HallEffect(BasicEditor):
         self.mode_crt = QCheckBox("Continuous RT")
         self.mode_crt.stateChanged.connect(self.on_crt_changed)
         settings_layout.addWidget(self.mode_crt, 4, 0)
+
+        self.replug_label = QLabel("⚠️ Unplug and replug keyboard to apply changes")
+        self.replug_label.setStyleSheet("font-size: 12px; color: red; font-weight: bold;")
+        self.replug_label.setAlignment(Qt.AlignCenter)
+        self.replug_label.setWordWrap(True)
+        self.replug_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        self.replug_label.setVisible(False)
+
+        settings_layout.setRowMinimumHeight(5, 10)
+        settings_layout.addWidget(self.replug_label, 6, 0, 2, 3, alignment=Qt.AlignHCenter)
+
 
         # Create the ClickableWidget as the base container
         empty_space = ClickableWidget()
@@ -143,6 +154,8 @@ class HallEffect(BasicEditor):
             travel_dist = 340
         elif dist == "3.5 mm":
             travel_dist = 350
+        elif dist == "3.2 mm":
+            travel_dist = 320
         
         self.actuation.setMaximum(int(travel_dist / 10 - 1))
         self.val_travel_dist = travel_dist
@@ -174,6 +187,9 @@ class HallEffect(BasicEditor):
         self.txt_sensitivity.setText(f'{sensitivity * 0.05:.2f} mm')
         self.on_change()
 
+    def set_replug_required(self, required: bool):
+        self.replug_label.setVisible(required)
+
     def apply(self):
         if self.container.active_key != None:
             self.prev_key = None
@@ -199,6 +215,10 @@ class HallEffect(BasicEditor):
                             changed = True
                 if changed:
                     self.refresh_layer_display()
+
+            prev = self.replug_value_check
+            curr = self.val_travel_dist
+            self.set_replug_required((prev == 320 and curr in {340, 350}) or (curr == 320 and prev in {340, 350}))
 
             self.keyboard.hall_effect_set_user_config(0, self.val_travel_dist)
             self.keyboard.hall_effect_set_user_config(1, self.val_sensitivity)
@@ -244,6 +264,9 @@ class HallEffect(BasicEditor):
         self.update_sensitivity(self.val_sensitivity / 5)
         self.update_actuation(self.val_actuation / 10)
         self.update_travel_dist(self.val_travel_dist / 100)
+
+        self.replug_value_check = self.keyboard.hall_effect_get_user_config()[0]
+        self.set_replug_required(False)
 
         self.btn_apply_all.setEnabled(False)
 
