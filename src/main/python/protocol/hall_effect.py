@@ -10,39 +10,27 @@ from unlocker import Unlocker
 class ProtocolHallEffect(BaseProtocol):
 
     def reload_hall_effect(self):
-        data = self.usb_send(
-            self.dev,
-            struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_GET_HANDEDNESS),
-            retries=20
-        )
-        start_idx, end_idx = 0, self.rows
-        self.active_rows = []
-
-        rows_per_hand = self.rows / 2
-
-        if data[0] in (0, rows_per_hand):  
-            start_idx = data[0]  
-            end_idx = rows_per_hand if data[0] == 0 else self.rows  
-            self.handedness = data[0]
-
-        self.active_rows = list(range(int(start_idx), int(end_idx)))
+        # data = self.usb_send(
+        #     self.dev,
+        #     struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_GET_HANDEDNESS),
+        #     retries=20
+        # )
         
         self.key_config = []
         for row in range(self.rows):
             r = []
-            if row in self.active_rows:
-                for col in range(self.cols):
-                    data = self.usb_send(
-                        self.dev,
-                        struct.pack("BBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_GET_KEY_CONFIG, row, col),
-                        retries=20
-                    )
-                    if data[0] == 0:
-                        # self.key_settings = struct.unpack("<BBHH", data[1:1 + struct.calcsize("<BBHH")])
-                        r.append(struct.unpack("<HB", data[1:1 + struct.calcsize("<HB")]))
-                    else:
-                        self.key_config = -1
-                        break
+            for col in range(self.cols):
+                data = self.usb_send(
+                    self.dev,
+                    struct.pack("BBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_HALL_EFFECT_GET_KEY_CONFIG, row, col),
+                    retries=20
+                )
+                if data[0] == 0:
+                    # self.key_settings = struct.unpack("<BBHH", data[1:1 + struct.calcsize("<BBHH")])
+                    r.append(struct.unpack("<HB", data[1:1 + struct.calcsize("<HB")]))
+                else:
+                    self.key_config = -1
+                    break
             self.key_config.append(r)
         
         self.user_config = []
@@ -92,7 +80,7 @@ class ProtocolHallEffect(BaseProtocol):
         user_cfg = data[1]
         # print(data[1])
 
-        for row in self.active_rows:
+        for row in range(self.rows):
             for col in range(self.cols):
                 self.hall_effect_set_key_config(row, col, key_cfg[row][col])
 
