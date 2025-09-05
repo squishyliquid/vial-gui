@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 RUN apt-get update && apt-get -y upgrade
 RUN apt-get install -y libusb-1.0-0-dev libudev-dev ruby ruby-dev rubygems build-essential desktop-file-utils wget unzip zlib1g-dev liblzma-dev libssl-dev git imagemagick file libfuse2
