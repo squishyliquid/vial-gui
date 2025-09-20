@@ -58,7 +58,7 @@ class HallEffect(BasicEditor):
         self.lbl_travel_dist = QLabel(tr("HallEffect", "Travel distance"))
         group_global_layout.addWidget(self.lbl_travel_dist, 0, 0)
         self.travel_dist = QComboBox()
-        self.travel_dist.addItems(["3.2 mm", "3.4 mm", "3.5 mm", "3.8 mm"])
+        self.travel_dist.addItems(["3.2 mm", "3.4 mm", "3.5 mm", "3.8 mm", "3.9 mm"])
         self.travel_dist.currentTextChanged.connect(self.on_travel_dist_changed)
         group_global_layout.addWidget(self.travel_dist, 1, 0, 1, 4)
 
@@ -67,6 +67,8 @@ class HallEffect(BasicEditor):
 
         # Sensitivity
         self.lbl_sensitivity = QLabel(tr("HallEffect", "Sensitivity"))
+        self.lbl_high_sensitivity = QLabel(tr("HallEffect", "High"))
+        self.lbl_low_sensitivity = QLabel(tr("HallEffect", "Low"))
         group_global_layout.addWidget(self.lbl_sensitivity, 3, 0)
         self.sensitivity = QSlider(QtCore.Qt.Horizontal)
         self.sensitivity.setRange(2, 20)
@@ -79,6 +81,8 @@ class HallEffect(BasicEditor):
         #     padding: 4px;
         # """)
         group_global_layout.addWidget(self.txt_sensitivity, 4, 3, alignment=Qt.AlignTop)
+        group_global_layout.addWidget(self.lbl_high_sensitivity, 5, 0, alignment=Qt.AlignTop)
+        group_global_layout.addWidget(self.lbl_low_sensitivity, 5, 2, alignment=Qt.AlignTop | Qt.AlignRight)
 
         settings_layout.addWidget(group_global)
         
@@ -108,17 +112,17 @@ class HallEffect(BasicEditor):
         group_per_key_layout.addWidget(self.txt_actuation, 1, 3, alignment=Qt.AlignTop)
 
         blank_label = QLabel("")   # empty string
-        group_per_key_layout.addWidget(blank_label, 2, 0, 1, 2)
+        group_per_key_layout.addWidget(blank_label, 2, 0, 2, 2)
 
         # Rapid Trigger
         self.mode = QCheckBox("Rapid Trigger")
         self.mode.stateChanged.connect(self.on_rt_changed)
-        group_per_key_layout.addWidget(self.mode, 3, 0, 1, 2)
+        group_per_key_layout.addWidget(self.mode, 4, 0, 1, 2)
 
         # Continuous Rapid Trigger
         self.mode_crt = QCheckBox("Continuous Rapid Trigger")
         self.mode_crt.stateChanged.connect(self.on_crt_changed)
-        group_per_key_layout.addWidget(self.mode_crt, 4, 0, 1, 3)
+        group_per_key_layout.addWidget(self.mode_crt, 5, 0, 1, 3)
 
         settings_layout.addWidget(group_per_key)
 
@@ -213,7 +217,8 @@ class HallEffect(BasicEditor):
         travel_distance_groups = [
             {320},
             {340, 350},
-            {380}
+            {380},
+            {390}
         ]
         prev_group = next((i for i, g in enumerate(travel_distance_groups) if prev in g), None)
         curr_group = next((i for i, g in enumerate(travel_distance_groups) if curr in g), None)
@@ -296,7 +301,7 @@ class HallEffect(BasicEditor):
 
         # Enable widgets
         enable_widgets = [self.lbl_travel_dist, self.travel_dist, self.sensitivity, 
-                        self.txt_sensitivity, self.lbl_sensitivity]
+                        self.txt_sensitivity, self.lbl_sensitivity, self.lbl_high_sensitivity, self.lbl_low_sensitivity]
         for widget in enable_widgets:
             widget.setEnabled(True)
 
@@ -371,7 +376,7 @@ class HallEffect(BasicEditor):
 
         # Disable elements
         for widget in [self.lbl_travel_dist, self.travel_dist, self.sensitivity, 
-                    self.txt_sensitivity, self.lbl_sensitivity]:
+                    self.txt_sensitivity, self.lbl_sensitivity, self.lbl_high_sensitivity, self.lbl_low_sensitivity]:
             widget.setEnabled(False)
 
         # Enable elements
@@ -400,7 +405,7 @@ class HallEffect(BasicEditor):
 
         # Enable widgets
         enable_widgets = [self.lbl_travel_dist, self.travel_dist, self.sensitivity, 
-                        self.txt_sensitivity, self.lbl_sensitivity]
+                        self.txt_sensitivity, self.lbl_sensitivity, self.lbl_high_sensitivity, self.lbl_low_sensitivity]
         for widget in enable_widgets:
             widget.setEnabled(True)
 
