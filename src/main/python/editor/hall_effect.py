@@ -212,7 +212,7 @@ class HallEffect(BasicEditor):
         general_settings_widget.setLayout(general_settings_grid)
         general_settings_widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         # general_settings_widget.setFixedHeight(60)
-        general_settings_widget.setFixedWidth(200)
+        general_settings_widget.setFixedWidth(250)
 
         # --- Wrap in a QGroupBox to get the section look ---
         general_group_box = QGroupBox("")  # optional title
@@ -297,7 +297,7 @@ class HallEffect(BasicEditor):
         actuation_settings_widget.setLayout(actuation_settings_grid)
         actuation_settings_widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         actuation_settings_widget.setFixedHeight(200)
-        actuation_settings_widget.setFixedWidth(200)
+        actuation_settings_widget.setFixedWidth(250)
 
         # --- Wrap in a QGroupBox to get the section look ---
         actuation_group_box = QGroupBox("")  # optional title
@@ -347,7 +347,7 @@ class HallEffect(BasicEditor):
         rt_settings_1.setLayout(rt_grid_1)
         rt_settings_1.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         rt_settings_1.setFixedHeight(40)
-        rt_settings_1.setFixedWidth(200)
+        rt_settings_1.setFixedWidth(250)
 
         # --- Wrap in a QGroupBox to get the section look ---
         rt_group_1 = QGroupBox("")  # optional title
@@ -470,7 +470,7 @@ class HallEffect(BasicEditor):
         rt_settings_2.setLayout(rt_grid_2)
         rt_settings_2.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         # rt_settings_2.setFixedHeight(60)
-        rt_settings_2.setFixedWidth(200)
+        rt_settings_2.setFixedWidth(250)
 
         # --- Wrap in a QGroupBox to get the section look ---
         rt_group_2 = QGroupBox("")  # optional title
@@ -524,7 +524,7 @@ class HallEffect(BasicEditor):
         ak_option.setLayout(ak_option_grid)
         ak_option.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         # ak_option.setFixedHeight(40)
-        ak_option.setFixedWidth(100)
+        ak_option.setFixedWidth(150)
 
         # --- Wrap in a QGroupBox to get the section look ---
         ak_option_group = QGroupBox("")  # optional title
@@ -621,7 +621,7 @@ class HallEffect(BasicEditor):
         ak_settings_1.setLayout(ak_grid_1)
         ak_settings_1.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         # ak_settings_1.setFixedHeight(350)
-        ak_settings_1.setFixedWidth(200)
+        ak_settings_1.setFixedWidth(250)
 
         # --- Wrap in a QGroupBox to get the section look ---
         ak_group_1 = QGroupBox("")  # optional title
@@ -754,8 +754,8 @@ class HallEffect(BasicEditor):
                 border-radius: 12px;
                 padding: 8px 12px;
                 margin: 4px 0;
-                min-width: 90px;
-                max-width: 90px; /* all tabs the same width */
+                min-width: 100px;
+                max-width: 100px; /* all tabs the same width */
             }
             QTabBar::tab:first { 
                 margin-left: 4px;
@@ -1297,21 +1297,21 @@ class HallEffect(BasicEditor):
             ak_sym.setFixedWidth(24)
             ak_sym.setAlignment(Qt.AlignCenter)
             
-            edit_btn = QPushButton("📝")
-            edit_btn.setFixedWidth(22)
-            edit_btn.setFixedHeight(22)
-            edit_btn.setStyleSheet("color: #1A9FFF;")
+            edit_btn = QPushButton("🖊️") #🖌🖊
+            edit_btn.setFixedWidth(25)
+            edit_btn.setFixedHeight(25)
+            edit_btn.setStyleSheet("color: #1A9FFF; font-weight: bold")
             edit_btn.clicked.connect(lambda _, idx=row_index: self.on_input_priority_edit_btn_clicked(idx))
 
             del_btn = QPushButton("✕")
-            del_btn.setFixedWidth(22)
-            del_btn.setFixedHeight(22)
+            del_btn.setFixedWidth(25)
+            del_btn.setFixedHeight(25)
             del_btn.setStyleSheet("color: red; font-weight: bold")
             del_btn.clicked.connect(lambda _, idx=row_index: self.delete_pair(idx))
 
             # Row box
             row_box = QWidget()
-            row_box.setFixedWidth(290)
+            row_box.setFixedWidth(340)
 
             row_layout = QHBoxLayout(row_box)
             row_layout.setContentsMargins(0, 0, 0, 0)
