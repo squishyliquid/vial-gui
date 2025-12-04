@@ -450,20 +450,20 @@ class HallEffect(BasicEditor):
 
         rt_grid_2.addWidget(self.rt_separate_cbx, 0, 0, 1, 4)
 
-        rt_grid_2.addWidget(self.rt_press_lbl, 2, 0, 1, 2)
+        rt_grid_2.addWidget(self.rt_press_lbl, 2, 0, 1, 3)
         rt_grid_2.addWidget(self.rt_press_sld, 3, 0, 1, 3)
         rt_grid_2.addWidget(self.rt_press_txt, 3, 3)
         rt_grid_2.addWidget(self.rt_press_high_lbl, 4, 0)
         rt_grid_2.addWidget(self.rt_press_low_lbl, 4, 2, alignment=Qt.AlignRight)
 
-        rt_grid_2.addWidget(self.rt_release_lbl, 6, 0, 1, 2)
+        rt_grid_2.addWidget(self.rt_release_lbl, 6, 0, 1, 3)
         rt_grid_2.addWidget(self.rt_release_sld, 7, 0, 1, 3)
         rt_grid_2.addWidget(self.rt_release_txt, 7, 3)
         rt_grid_2.addWidget(self.rt_release_high_lbl, 8, 0)
         rt_grid_2.addWidget(self.rt_release_low_lbl, 8, 2, alignment=Qt.AlignRight)
 
         rt_grid_2.setRowMinimumHeight(1, 20)
-        rt_grid_2.setRowMinimumHeight(5, 20) 
+        rt_grid_2.setRowMinimumHeight(5, 20)
 
         # Wrap grid in a QWidget
         rt_settings_2 = QWidget()
