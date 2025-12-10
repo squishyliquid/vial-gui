@@ -780,15 +780,20 @@ class HallEffect(BasicEditor):
         #
         # --- Combine settings ---
         #
+        self.hint_txt = QLabel("")
+        self.hint_txt.setFixedHeight(40)
+        self.hint_txt.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+
+        settings_layout.addWidget(self.hint_txt)
+        settings_layout.addWidget(self.buttons)
+        settings_layout.addWidget(self.tab_widget)
+
         empty_space = ClickableWidget()
         empty_space_layout = QVBoxLayout(empty_space)
         empty_space_layout.addWidget(settings_widget, alignment=Qt.AlignHCenter)
         empty_space_layout.addStretch()
 
         self.addWidget(empty_space)
-
-        settings_layout.addWidget(self.buttons)
-        settings_layout.addWidget(self.tab_widget)
 
     def on_total_travel_changed(self, dist):
         prev_switch = self.switch_display_val
@@ -1120,6 +1125,7 @@ class HallEffect(BasicEditor):
                 widget.deleteLater()
 
         if index == 0:
+            self.hint_txt.setText("")
             self.container.deselect_all()
             self.container.disable_interaction()
 
@@ -1128,8 +1134,8 @@ class HallEffect(BasicEditor):
         
         self.container.enable_interaction()
 
-        # Handle index 3 buttons
         if index == 3:
+            self.hint_txt.setText("")
             self.container.deselect_all()
             
             self.input_priority_cancel_btn = QPushButton(tr("HallEffect", "Cancel"))
@@ -1145,6 +1151,8 @@ class HallEffect(BasicEditor):
 
             self.refresh_layout_display()
             return
+        
+        self.hint_txt.setText("Hold [Ctrl] to select multiple keys")
 
         self.btn_select_all = QPushButton(tr("HallEffect", "Select all keys"))
         self.btn_select_all.clicked.connect(self.on_select_all)
@@ -1297,7 +1305,7 @@ class HallEffect(BasicEditor):
             ak_sym.setFixedWidth(24)
             ak_sym.setAlignment(Qt.AlignCenter)
             
-            edit_btn = QPushButton("🖊️") #🖌🖊
+            edit_btn = QPushButton("⛮") #◼☰◰🖊️🖌🖊
             edit_btn.setFixedWidth(25)
             edit_btn.setFixedHeight(25)
             edit_btn.setStyleSheet("color: #1A9FFF; font-weight: bold")
