@@ -293,6 +293,7 @@ class KeyboardWidgetHE(QWidget):
         self.last_key = None
         self.tab_index = 0
         self.current_layer = 0
+        self.rows_per_hand = 8
 
     def set_keys(self, keys, encoders):
         self.common_widgets = []
@@ -588,11 +589,11 @@ class KeyboardWidgetHE(QWidget):
         pair = self.input_priority_pair
         idx = self.input_priority_index
 
-        left_side = next((p.desc.row < 4 for p in pair if p is not None), None)
+        left_side = next((p.desc.row < self.rows_per_hand for p in pair if p is not None), None)
 
         same_side = True
         if left_side is not None and key is not None:
-            same_side = left_side == (key.desc.row < 4)
+            same_side = left_side == (key.desc.row < self.rows_per_hand)
 
         if key is not None and self.select_enabled and not existing_key and same_side:
 

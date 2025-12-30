@@ -1564,6 +1564,7 @@ class HallEffect(BasicEditor):
         self.container.last_key = self.container.widgets[0]
         self.input_priority_resolution = 0
         self.container.input_priority_pairs = []
+        self.container.rows_per_hand = self.keyboard.rows / 2
         self.ak_max = 8
         self.edit_pair = None
 
