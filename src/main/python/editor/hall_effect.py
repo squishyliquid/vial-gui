@@ -245,13 +245,19 @@ class HallEffect(BasicEditor):
 
         switch = SwitchWidget()
 
+        self.actuation_separate_cbx = QCheckBox("Separate reset point")
+        self.actuation_separate_cbx.stateChanged.connect(self.on_actuation_separate_changed)
+        # self.actuation_separate_cbx.setStyleSheet("font-size: 15px;")
+
         self.actuation_lbl = QLabel(tr("HallEffect", "Set actuation point: "))
         self.actuation_sld = ClickableSlider(Qt.Vertical)
         self.actuation_sld.setInvertedAppearance(True)
-        self.actuation_sld.setMinimum(1)
+        self.actuation_sld.setMinimum(0)
         self.actuation_sld.valueChanged.connect(self.on_actuation_sld_changed)
         self.actuation_sld.sliderReleased.connect(self.on_actuation_sld_released)
         self.actuation_txt = QLabel()
+        # self.actuation_txt.setStyleSheet("font-size: 15px;")
+        # self.actuation_lbl.setStyleSheet("font-size: 15px;")
 
         # 00AEEF
         self.actuation_sld.setStyleSheet("""
@@ -283,14 +289,66 @@ class HallEffect(BasicEditor):
             }
         """)
 
+        self.reset_sld = ClickableSlider(Qt.Vertical)
+        self.reset_sld.setInvertedAppearance(True)
+        self.reset_sld.setMinimum(0)
+        self.reset_sld.valueChanged.connect(self.on_reset_sld_changed)
+        self.reset_sld.sliderReleased.connect(self.on_reset_sld_released)
+        self.reset_txt = QLabel()
+        # self.reset_txt.setStyleSheet("font-size: 15px;")
+
+        policy_sld = self.reset_sld.sizePolicy()
+        policy_sld.setRetainSizeWhenHidden(True)
+        self.reset_sld.setSizePolicy(policy_sld)
+
+        policy_txt = self.reset_txt.sizePolicy()
+        policy_txt.setRetainSizeWhenHidden(True)
+        self.reset_txt.setSizePolicy(policy_txt)
+
+        self.reset_sld.setStyleSheet("""
+            QSlider {
+                background: transparent;
+            }
+
+            QSlider::groove:vertical {
+                border: none;
+                width: 3px;
+                background: #666;
+                border-radius: 1px;
+            }
+            QSlider::sub-page:vertical {
+                background: #F74843;
+                border-radius: 1px;
+            }
+            QSlider::add-page:vertical {
+                background: #454545;
+                border-radius: 1px;
+            }
+            QSlider::handle:vertical {
+                background: white;
+                border: none;
+                width: 12px;
+                height: 12px;
+                border-radius: 6px;
+                margin: 0px -5px;
+            }
+        """)
+
         actuation_settings_grid = QGridLayout()
         actuation_settings_grid.setContentsMargins(0, 0, 0, 0)
         actuation_settings_grid.setSpacing(10)
 
-        actuation_settings_grid.addWidget(self.actuation_lbl, 0, 0, 1, 4)
-        actuation_settings_grid.addWidget(switch, 1, 0, 5, 2, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
-        actuation_settings_grid.addWidget(self.actuation_sld, 2, 2, 3, 1)
-        actuation_settings_grid.addWidget(self.actuation_txt, 3, 3, 1, 1)
+        actuation_settings_grid.addWidget(self.actuation_lbl, 2, 0, 1, 8)
+        actuation_settings_grid.addWidget(switch, 3, 3, 5, 2, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
+        actuation_settings_grid.addWidget(self.actuation_sld, 4, 1, 3, 1)
+        actuation_settings_grid.addWidget(self.actuation_txt, 5, 0, 1, 1)
+
+        actuation_settings_grid.addWidget(self.reset_sld, 4, 6, 3, 1)
+        actuation_settings_grid.addWidget(self.reset_txt, 5, 7, 1, 1)
+
+        actuation_settings_grid.addWidget(self.actuation_separate_cbx, 0, 0, 1, 8)
+
+        actuation_settings_grid.setRowMinimumHeight(1, 20)
 
         # Wrap grid in a QWidget
         actuation_settings_widget = QWidget()
@@ -811,11 +869,16 @@ class HallEffect(BasicEditor):
 
             # new value in mm
             actuation_point = min(self.convert_to_nearest_10mm(actuation.actuation_point), total_travel - 10)
+            if actuation.reset_point != 255:
+                reset_point = min(self.convert_to_nearest_10mm(actuation.reset_point), actuation_point - 10)
+            else:
+                reset_point = self.convert_to_nearest_10mm(actuation.reset_point)
             rt_press = self.convert_to_nearest_5mm(actuation.rt_press, prev_switch)
             rt_release = self.convert_to_nearest_5mm(actuation.rt_release, prev_switch)
 
             # new value in 255
             actuation.actuation_point = self.convert_to_255(actuation_point)
+            actuation.reset_point = self.convert_to_255(reset_point)
             actuation.rt_press = self.convert_to_255(rt_press)
             actuation.rt_release = self.convert_to_255(rt_release)
 
@@ -823,6 +886,7 @@ class HallEffect(BasicEditor):
 
             if row == last_row and col == last_col:
                 self.actuation_display_val = actuation_point
+                self.reset_display_val = reset_point
                 self.rt_press_display_val = rt_press
                 self.rt_release_display_val = rt_release
 
@@ -855,7 +919,47 @@ class HallEffect(BasicEditor):
 
         self.refresh_layout_display()
 
+    def on_actuation_separate_changed(self, separate):
+        self.actuation_separate_val = separate
+
+        if separate:
+            self.actuation_lbl.setText("Set actuation and reset point: ")
+            self.reset_display_val = self.actuation_display_val - 10
+        else:
+            self.actuation_lbl.setText("Set actuation point: ")
+            #self.reset_display_val = 255
+
+        for key in self.container.selected_keys:
+            row = key.desc.row
+            col = key.desc.col
+
+            actuation = self.keyboard.actuation_matrix[self.profile][row][col]
+
+            if separate:
+                reset = self.convert_to_nearest_10mm(actuation.actuation_point) - 10
+                actuation.reset_point = self.convert_to_255(reset)
+
+                self.rt_mode_display_val = 0
+                self.rt_separate_val = 0
+                self.rt_press_display_val = 0
+                actuation.rt_mode = 0
+                actuation.rt_press = 0
+                actuation.rt_release = 0
+
+            else:
+                actuation.reset_point = 255
+
+            self.keyboard.set_actuation_config(self.profile, row, col)
+
+            # print(f"Separate sens: {self.rt_mode_display_val}")
+
+        self.refresh_layout_display()
+        self.refresh_settings_display()
+
     def on_actuation_sld_changed(self, actuation):
+        if actuation == 0:
+            actuation = 1
+            self.actuation_sld.setSliderPosition(actuation)
         # self.val_actuation = actuation * 10
         self.actuation_display_val = actuation * 10
         self.actuation_txt.setText(f'{actuation / 10:.1f} mm')
@@ -863,12 +967,50 @@ class HallEffect(BasicEditor):
         self.temp_actuation_display()
 
     def on_actuation_sld_released(self):
+        if self.actuation_display_val <= self.reset_display_val:
+            self.reset_display_val = self.actuation_display_val - 10
+
         for key in self.container.selected_keys:
             row = key.desc.row
             col = key.desc.col
 
             actuation = self.keyboard.actuation_matrix[self.profile][row][col]
             actuation.actuation_point = self.convert_to_255(self.actuation_display_val)
+
+            if actuation.reset_point != 255:
+                actuation.reset_point = self.convert_to_255(self.reset_display_val)
+
+            self.keyboard.set_actuation_config(self.profile, row, col)
+
+            # print(f"Set actuation point: {actuation.actuation_point}")
+
+        self.refresh_layout_display()
+        self.refresh_settings_display()
+
+    def on_reset_sld_changed(self, reset):
+        actuation = self.actuation_display_val / 10
+        if reset >= actuation:
+            reset = actuation - 1
+            self.reset_sld.setSliderPosition(reset)
+
+        self.reset_display_val = reset * 10
+        self.reset_txt.setText(f'{reset / 10:.1f} mm')
+        
+        self.temp_reset_display()
+
+    def on_reset_sld_released(self):
+        for key in self.container.selected_keys:
+            row = key.desc.row
+            col = key.desc.col
+
+            actuation = self.keyboard.actuation_matrix[self.profile][row][col]
+            actuation.reset_point = self.convert_to_255(self.reset_display_val)
+
+            actuation.actuation_point = self.convert_to_255(self.actuation_display_val)
+            actuation.rt_mode = 0
+            actuation.rt_press = 0
+            actuation.rt_release = 0
+
             self.keyboard.set_actuation_config(self.profile, row, col)
 
             # print(f"Set actuation point: {actuation.actuation_point}")
@@ -895,6 +1037,7 @@ class HallEffect(BasicEditor):
             
             actuation = self.keyboard.actuation_matrix[self.profile][row][col]
             actuation.rt_mode = mode
+            actuation.reset_point = 255
 
             if mode == 0:
                 actuation.rt_press = 0
@@ -906,6 +1049,7 @@ class HallEffect(BasicEditor):
             self.keyboard.set_actuation_config(self.profile, row, col)
             
             # print(f"Set Mode: {self.rt_mode_display_val}")
+        self.actuation_separate_val = 0
 
         self.refresh_layout_display()
         self.refresh_settings_display()
@@ -972,7 +1116,8 @@ class HallEffect(BasicEditor):
             col = key.desc.col
 
             actuation = self.keyboard.actuation_matrix[self.profile][row][col]
-            actuation.rt_mode = self.rt_mode_display_val
+            if actuation.rt_mode == 0:
+                actuation.rt_mode = self.rt_mode_display_val
             actuation.rt_press = self.convert_to_255(self.rt_press_display_val)
 
             self.keyboard.set_actuation_config(self.profile, row, col)
@@ -994,7 +1139,9 @@ class HallEffect(BasicEditor):
             col = key.desc.col
 
             actuation = self.keyboard.actuation_matrix[self.profile][row][col]
-            actuation.rt_mode = self.rt_mode_display_val
+            if actuation.rt_mode == 0:
+                actuation.rt_mode = self.rt_mode_display_val
+                actuation.rt_press = self.convert_to_255(self.rt_press_display_val)
             actuation.rt_release = self.convert_to_255(self.rt_release_display_val)
 
             self.keyboard.set_actuation_config(self.profile, row, col)
@@ -1206,6 +1353,8 @@ class HallEffect(BasicEditor):
             actuation = self.keyboard.actuation_matrix[self.profile][row][col]
 
             self.actuation_display_val = self.convert_to_nearest_10mm(actuation.actuation_point)
+            self.reset_display_val = self.convert_to_nearest_10mm(actuation.reset_point)
+            self.actuation_separate_val = 0 if (actuation.reset_point == 255) else 2
             self.rt_mode_display_val = actuation.rt_mode
             self.rt_press_display_val = self.convert_to_nearest_5mm(actuation.rt_press, self.switch_display_val)
             self.rt_release_display_val = self.convert_to_nearest_5mm(actuation.rt_release, self.switch_display_val)
@@ -1357,6 +1506,8 @@ class HallEffect(BasicEditor):
         actuation = self.keyboard.actuation_matrix[self.profile][row][col]
 
         self.actuation_display_val = self.convert_to_nearest_10mm(actuation.actuation_point)
+        self.reset_display_val = self.convert_to_nearest_10mm(actuation.reset_point)
+        self.actuation_separate_val = 0 if (actuation.reset_point == 255) else 2
         self.rt_mode_display_val = actuation.rt_mode
         self.rt_press_display_val = self.convert_to_nearest_5mm(actuation.rt_press, self.switch_display_val)
         self.rt_release_display_val = self.convert_to_nearest_5mm(actuation.rt_release, self.switch_display_val)
@@ -1379,7 +1530,35 @@ class HallEffect(BasicEditor):
 
     def temp_actuation_display(self):
         for key in self.container.selected_keys:
-            key.setText(f"{self.actuation_display_val / 100:.1f}\n")
+            row = key.desc.row
+            col = key.desc.col
+
+            actuation = self.keyboard.actuation_matrix[self.profile][row][col]
+
+            reset_point = self.convert_to_nearest_5mm(actuation.reset_point, self.switch_display_val)
+
+            key.setState(actuation.rt_mode)
+
+            if actuation.reset_point != 255:
+                key.setText(f"{self.actuation_display_val / 100:.1f}\n{reset_point / 100:.1f}")
+            else:
+                key.setText(f"{self.actuation_display_val / 100:.1f}\n")
+
+        self.container.update()
+
+    def temp_reset_display(self):
+        for key in self.container.selected_keys:
+            row = key.desc.row
+            col = key.desc.col
+
+            actuation = self.keyboard.actuation_matrix[self.profile][row][col]
+
+            if actuation.rt_mode != 0:
+                key.setState(self.rt_mode_display_val)
+            else:
+                key.setState(actuation.rt_mode)
+
+            key.setText(f"{self.actuation_display_val / 100:.1f}\n{self.reset_display_val / 100:.1f}")
 
         self.container.update()
 
@@ -1392,7 +1571,10 @@ class HallEffect(BasicEditor):
 
             rt_release = self.convert_to_nearest_5mm(actuation.rt_release, self.switch_display_val)
 
-            key.setState(self.rt_mode_display_val)
+            if actuation.rt_mode == 0:
+                key.setState(self.rt_mode_display_val)
+            else:
+                key.setState(actuation.rt_mode)
 
             if rt_release != 0:
                 key.setText(f"{self.rt_press_display_val / 100:.2f}\n{rt_release / 100:.2f}")
@@ -1410,7 +1592,11 @@ class HallEffect(BasicEditor):
 
             rt_press = self.convert_to_nearest_5mm(actuation.rt_press, self.switch_display_val)
 
-            key.setState(self.rt_mode_display_val)
+            if actuation.rt_mode == 0:
+                key.setState(self.rt_mode_display_val)
+                rt_press = self.rt_press_display_val
+            else:
+                key.setState(actuation.rt_mode)
 
             key.setText(f"{rt_press / 100:.2f}\n{self.rt_release_display_val / 100:.2f}")
 
@@ -1421,14 +1607,26 @@ class HallEffect(BasicEditor):
 
         self.total_travel_cmb.setCurrentText(f'{dist / 100:.1f} mm')
         self.actuation_sld.setMaximum(int(dist / 10 - 1))
+        self.reset_sld.setMaximum(int(dist / 10 - 1))
 
         self.special_layer_cmb.setCurrentIndex(self.special_layer_display_val)
 
     def refresh_actuation_display(self):
         actuation = self.actuation_display_val
+        reset = self.reset_display_val
+
+        self.actuation_separate_cbx.setChecked(self.actuation_separate_val)
 
         self.actuation_sld.setSliderPosition(int(actuation / 10))
         self.actuation_txt.setText(f'{actuation / 100:.1f} mm')
+
+        self.reset_sld.setSliderPosition(int(reset / 10))
+        self.reset_txt.setText(f'{reset / 100:.1f} mm')
+
+        if self.actuation_separate_val:
+            self.actuation_lbl.setText("Set actuation and reset point: ")
+        else:
+            self.actuation_lbl.setText("Set actuation point: ")
 
     def refresh_rt_display(self):
         mode = self.rt_mode_display_val
@@ -1440,6 +1638,12 @@ class HallEffect(BasicEditor):
         self.crt_cbx.setEnabled(mode)
     
         self.rt_separate_cbx.setChecked(self.rt_separate_val)
+
+        if self.rt_separate_val:
+            self.rt_press_lbl.setText("Press Sensitivity")
+        else:
+            self.rt_press_lbl.setText("Sensitivity")
+
         self.rt_press_sld.setSliderPosition(int(self.rt_press_display_val / 5))
         self.rt_press_txt.setText(f'{self.rt_press_display_val * 0.01:.2f} mm')
         self.rt_release_sld.setSliderPosition(int(self.rt_release_display_val / 5))
@@ -1447,7 +1651,7 @@ class HallEffect(BasicEditor):
     
     def refresh_settings_display(self):
         for widget in [self.total_travel_cmb, self.special_layer_cmb,
-                       self.actuation_sld, 
+                       self.actuation_separate_cbx, self.actuation_sld, self.reset_sld,
                        self.rt_cbx, self.crt_cbx, 
                        self.rt_separate_cbx, self.rt_press_sld, self.rt_release_sld]:
             widget.blockSignals(True)
@@ -1457,7 +1661,7 @@ class HallEffect(BasicEditor):
         self.refresh_rt_display()
         
         for widget in [self.total_travel_cmb, self.special_layer_cmb,
-                       self.actuation_sld, 
+                       self.actuation_separate_cbx, self.actuation_sld, self.reset_sld,
                        self.rt_cbx, self.crt_cbx, 
                        self.rt_separate_cbx, self.rt_press_sld, self.rt_release_sld]:
             widget.blockSignals(False)
@@ -1468,8 +1672,12 @@ class HallEffect(BasicEditor):
                 widget.setEnabled(False)
 
             # Enable elements
-            for widget in [self.actuation_lbl, self.actuation_txt, self.actuation_sld, self.rt_cbx]:
+            for widget in [self.actuation_separate_cbx, self.actuation_lbl, self.actuation_txt, self.actuation_sld, 
+                           self.reset_txt, self.reset_sld, self.rt_cbx]:
                 widget.setEnabled(True)
+            
+            for widget in [self.reset_txt, self.reset_sld]:
+                widget.setVisible(self.actuation_separate_val)
 
             for widget in [self.rt_release_sld, self.rt_release_txt, self.rt_release_lbl, self.rt_release_high_lbl, self.rt_release_low_lbl]:
                 widget.setVisible(self.rt_separate_val)
@@ -1487,12 +1695,16 @@ class HallEffect(BasicEditor):
                 widget.setEnabled(True)
             
             # Disable widgets
-            disable_widgets = [self.actuation_lbl, self.actuation_txt, self.actuation_sld, self.rt_cbx, 
+            disable_widgets = [self.actuation_separate_cbx, self.actuation_lbl, self.actuation_txt, self.actuation_sld, 
+                               self.reset_txt, self.reset_sld, self.rt_cbx, 
                                self.crt_cbx, self.rt_separate_cbx, 
                                self.rt_press_sld, self.rt_press_txt, self.rt_press_lbl, self.rt_press_high_lbl, self.rt_press_low_lbl,
                                self.rt_release_sld, self.rt_release_txt, self.rt_release_lbl, self.rt_release_high_lbl, self.rt_release_low_lbl]
             for widget in disable_widgets:
                 widget.setEnabled(False)
+            
+            for widget in [self.reset_txt, self.reset_sld]:
+                widget.setVisible(self.actuation_separate_val)
             
             for widget in [self.rt_release_sld, self.rt_release_txt, self.rt_release_lbl, self.rt_release_high_lbl, self.rt_release_low_lbl]:
                 widget.setVisible(self.rt_separate_val)
@@ -1527,6 +1739,7 @@ class HallEffect(BasicEditor):
             actuation = self.keyboard.actuation_matrix[self.profile][row][col]
 
             actuation_point = self.convert_to_nearest_10mm(actuation.actuation_point)
+            reset_point = self.convert_to_nearest_10mm(actuation.reset_point)
             rt_mode = actuation.rt_mode
             rt_press = self.convert_to_nearest_5mm(actuation.rt_press, self.switch_display_val)
             rt_release = self.convert_to_nearest_5mm(actuation.rt_release, self.switch_display_val)
@@ -1534,7 +1747,10 @@ class HallEffect(BasicEditor):
             widget.setState(rt_mode)
 
             if index == 1:
-                widget.setText(f"{actuation_point / 100:.1f}\n")
+                if actuation.reset_point != 255:
+                    widget.setText(f"{actuation_point / 100:.1f}\n{reset_point / 100:.1f}")
+                else:
+                    widget.setText(f"{actuation_point / 100:.1f}\n")
             elif index == 2:
                 if rt_mode:
                     if rt_release != 0:
@@ -1620,6 +1836,8 @@ class HallEffect(BasicEditor):
         actuation = self.keyboard.actuation_matrix[self.profile][row][col]
         
         self.actuation_display_val = self.convert_to_nearest_10mm(actuation.actuation_point)
+        self.reset_display_val = self.convert_to_nearest_10mm(actuation.reset_point)
+        self.actuation_separate_val = 0 if (actuation.reset_point == 255) else 2
         self.rt_mode_display_val = actuation.rt_mode
         self.rt_press_display_val = self.convert_to_nearest_5mm(actuation.rt_press, self.switch_display_val)
         self.rt_release_display_val = self.convert_to_nearest_5mm(actuation.rt_release, self.switch_display_val)

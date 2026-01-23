@@ -10,18 +10,20 @@ from unlocker import Unlocker
 
 class ActuationConfig:
     
-    def __init__(self, actuation_point=0, rt_mode=0, rt_press=0, rt_release=0):
+    def __init__(self, actuation_point=0, reset_point=255, rt_mode=0, rt_press=0, rt_release=0):
         self.actuation_point = actuation_point
+        self.reset_point = reset_point
         self.rt_mode = rt_mode
         self.rt_press = rt_press
         self.rt_release = rt_release
 
     def to_tuple(self):
-        return (self.actuation_point, self.rt_mode, self.rt_press, self.rt_release)
+        return (self.actuation_point, self.reset_point, self.rt_mode, self.rt_press, self.rt_release)
     
     def to_dict(self):
         return {
             "actuation_point": self.actuation_point,
+            "reset_point": self.reset_point,
             "rt_mode": self.rt_mode,
             "rt_press": self.rt_press,
             "rt_release": self.rt_release
@@ -31,6 +33,7 @@ class ActuationConfig:
     def from_dict(cls, data):
         return cls(
             actuation_point=data["actuation_point"],
+            reset_point=data["reset_point"],
             rt_mode=data["rt_mode"],
             rt_press=data["rt_press"],
             rt_release=data["rt_release"]
@@ -55,7 +58,7 @@ class ProtocolHallEffect(BaseProtocol):
                         retries=20
                     )
                     if data and data[0] == 0:
-                        actuation_tuple = struct.unpack("<BBBB", data[1:1 + struct.calcsize("<BBBB")])
+                        actuation_tuple = struct.unpack("<BBBBB", data[1:1 + struct.calcsize("<BBBBB")])
                         actuation_object = ActuationConfig(*actuation_tuple) 
                         r.append(actuation_object)
                     else:
@@ -115,7 +118,7 @@ class ProtocolHallEffect(BaseProtocol):
 
         data_tuple = actuation_to_send.to_tuple() 
 
-        serialized = struct.pack("BBBB", *data_tuple)
+        serialized = struct.pack("BBBBB", *data_tuple)
         command_header = struct.pack("BBBBB", 
                                     CMD_VIA_VIAL_PREFIX, 
                                     CMD_VIAL_SET_HE_ACTUATION_CONFIG, 
@@ -129,6 +132,7 @@ class ProtocolHallEffect(BaseProtocol):
     def reset_actuation_profile(self, profile):
         data_tuple = (
             128,
+            255,
             0,
             0,
             0,
@@ -137,7 +141,7 @@ class ProtocolHallEffect(BaseProtocol):
             for col in range(self.cols):
                 self.actuation_matrix[profile][row][col] = ActuationConfig(*data_tuple) 
 
-                serialized = struct.pack("BBBB", *data_tuple)
+                serialized = struct.pack("BBBBB", *data_tuple)
                 command_header = struct.pack("BBBBB", 
                                             CMD_VIA_VIAL_PREFIX, 
                                             CMD_VIAL_SET_HE_ACTUATION_CONFIG, 
