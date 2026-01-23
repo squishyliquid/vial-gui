@@ -5,7 +5,8 @@ from keycodes.keycodes import Keycode, RESET_KEYCODE
 from protocol.base_protocol import BaseProtocol
 from protocol.constants import CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_HE_ACTUATION_CONFIG, CMD_VIAL_SET_HE_ACTUATION_CONFIG, \
                                 CMD_VIAL_GET_HE_INPUT_PRIORITY_PAIR, CMD_VIAL_SET_HE_INPUT_PRIORITY_PAIR, \
-                                CMD_VIAL_GET_HE_SWITCH, CMD_VIAL_SET_HE_SWITCH, CMD_VIAL_HE_RESET, CMD_VIAL_GET_HE_SPECIAL_LAYER, CMD_VIAL_SET_HE_SPECIAL_LAYER
+                                CMD_VIAL_GET_HE_SWITCH, CMD_VIAL_SET_HE_SWITCH, CMD_VIAL_HE_RESET, CMD_VIAL_GET_HE_SPECIAL_LAYER, CMD_VIAL_SET_HE_SPECIAL_LAYER, \
+                                CMD_VIAL_GET_HE_VERSION, VIAL_HE_FIRMWARE_VERSION
 from unlocker import Unlocker
 
 class ActuationConfig:
@@ -45,6 +46,21 @@ class ProtocolHallEffect(BaseProtocol):
         self.actuation_matrix = []
         error_occurred = False
         self.firmware_updated = True
+
+        self.he_version = -1
+
+        data = self.usb_send(
+            self.dev,
+            struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_HE_VERSION),
+            retries=20
+        )
+        if data and data[0] == 0:
+            self.he_version = struct.unpack("<B", data[1:1 + struct.calcsize("<B")])[0]
+        else:
+            error_occurred = True
+
+        if self.he_version != VIAL_HE_FIRMWARE_VERSION:
+            error_occurred = True
 
         for profile in range(2):
             profile_data = []
