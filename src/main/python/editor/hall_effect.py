@@ -959,7 +959,7 @@ class HallEffect(BasicEditor):
     def on_actuation_sld_changed(self, actuation):
         if actuation == 0:
             actuation = 1
-            self.actuation_sld.setSliderPosition(actuation)
+            self.actuation_sld.setSliderPosition(int(actuation))
         # self.val_actuation = actuation * 10
         self.actuation_display_val = actuation * 10
         self.actuation_txt.setText(f'{actuation / 10:.1f} mm')
@@ -991,7 +991,7 @@ class HallEffect(BasicEditor):
         actuation = self.actuation_display_val / 10
         if reset >= actuation:
             reset = actuation - 1
-            self.reset_sld.setSliderPosition(reset)
+            self.reset_sld.setSliderPosition(int(reset))
 
         self.reset_display_val = reset * 10
         self.reset_txt.setText(f'{reset / 10:.1f} mm')
